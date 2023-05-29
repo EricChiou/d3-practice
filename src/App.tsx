@@ -16,8 +16,6 @@ const App: FC = () => {
     height: 600,
     onClick: () => setMenu(() => ({ show: false, x: 0, y: 0, node: null })),
     onContextmenu: (event) => event.preventDefault(),
-    nodeOnContextmenu: (event, groupNode) =>
-      setMenu(() => ({ show: true, x: event.clientX, y: event.clientY, node: groupNode.data })),
   };
   const nodes: TopoNode[] = [
     {
@@ -26,6 +24,8 @@ const App: FC = () => {
       y: 250,
       radius: 5,
       color: 'red',
+      onContextmenu: (event, groupNode) =>
+        setMenu(() => ({ show: true, x: event.clientX, y: event.clientY, node: groupNode })),
     },
     {
       id: 1,
@@ -33,6 +33,8 @@ const App: FC = () => {
       y: 300,
       radius: 10,
       color: 'green',
+      onContextmenu: (event, groupNode) =>
+        setMenu(() => ({ show: true, x: event.clientX, y: event.clientY, node: groupNode })),
     },
     {
       id: 2,
@@ -40,18 +42,20 @@ const App: FC = () => {
       y: 170,
       radius: 15,
       color: 'blue',
+      onContextmenu: (event, groupNode) =>
+        setMenu(() => ({ show: true, x: event.clientX, y: event.clientY, node: groupNode })),
     },
   ];
   const links: TopoLink[] = [
     {
-      source: nodes[0],
-      target: nodes[1],
+      source: 0,
+      target: 1,
       width: 2,
       color: '#aaa',
     },
     {
-      source: nodes[1],
-      target: nodes[2],
+      source: 1,
+      target: 2,
       width: 6,
       color: 'red',
     },
@@ -61,17 +65,17 @@ const App: FC = () => {
   useEffect(() => {
     if (topo.current) return;
 
-    topo.current = new Topo(config, data.current);
-    topo.current.render();
+    topo.current = new Topo(config);
+    topo.current.addData(data.current);
   }, []);
 
   function addNode() {
-    const node: TopoNode = { id: 3, x: 300, y: 300, radius: 6, color: '#598', opacity: 0.7 };
+    const node: TopoNode = { id: 3, x: 300, y: 300, radius: 6, color: '#598' };
     topo.current?.addNode(node);
   }
 
   function addLink() {
-    const link = { source: data.current.nodes[1], target: data.current.nodes[3] };
+    const link = { source: 1, target: 3 };
     topo.current?.addLink(link);
   }
 
