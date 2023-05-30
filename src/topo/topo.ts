@@ -3,30 +3,31 @@ import * as d3 from 'd3';
 import { TopoConfig, TopoNode, TopoLink, TopoGroupData, TopoGroupLink, TopoGroupNode } from './types';
 
 export default class Topo {
-  private static readonly NodePreClass = 'node';
-  private static readonly LinkPreClass = 'link';
-  private static readonly NodeG = 'nodes';
-  private static readonly LinkG = 'links';
+  public static readonly NodePreClassName = 'node';
+  public static readonly LinkPreClassName = 'link';
+  public static readonly NodeGClassName = 'nodes';
+  public static readonly LinkGClassName = 'links';
 
-  private static readonly DefaultNodeRadius = 5;
-  private static readonly DefaultNodeColor = '#000';
-  private static readonly DefaultNodeOpacity = 1;
+  public static readonly DefaultNodeRadius = 5;
+  public static readonly DefaultNodeColor = '#000';
+  public static readonly DefaultNodeOpacity = 1;
 
-  private static readonly DefaultLinkWidth = 2;
-  private static readonly DefaultLinkColor = '#aaa';
-  private static readonly DefaultLinkOpacity = 1;
+  public static readonly DefaultLinkWidth = 2;
+  public static readonly DefaultLinkColor = '#aaa';
+  public static readonly DefaultLinkOpacity = 1;
 
   private static GetLinkClassName(link: TopoLink): string {
-    return `${Topo.LinkPreClass}-${link.source}-${link.target}`;
+    return `${Topo.LinkPreClassName}-${link.source}-${link.target}`;
   }
 
   private static GetNodeClassName(node: TopoNode): string {
-    return `${Topo.NodePreClass}-${node.id}`;
+    return `${Topo.NodePreClassName}-${node.id}`;
   }
 
   private simulation: d3.Simulation<TopoGroupNode, TopoGroupLink>;
   private svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>;
   private groupData: TopoGroupData;
+  private run = true;
 
   private renderSVG(config: TopoConfig): d3.Selection<SVGSVGElement, unknown, HTMLElement, any> {
     const { root, width, height, onClick, onContextmenu } = config;
@@ -36,8 +37,8 @@ export default class Topo {
       .attr('height', height)
       .on('click', (e: PointerEvent) => onClick?.(e, this.groupData))
       .on('contextmenu', (e: PointerEvent) => onContextmenu?.(e, this.groupData));
-    svg.append('g').attr('class', Topo.LinkG);
-    svg.append('g').attr('class', Topo.NodeG);
+    svg.append('g').attr('class', Topo.LinkGClassName);
+    svg.append('g').attr('class', Topo.NodeGClassName);
     return svg;
   }
 
@@ -63,6 +64,7 @@ export default class Topo {
 
       node.el.attr('cx', x).attr('cy', y);
     });
+
     groupData.links.forEach((link) => link.el
       .attr('x1', link.source.x).attr('y1', link.source.y)
       .attr('x2', link.target.x).attr('y2', link.target.y),
@@ -83,12 +85,14 @@ export default class Topo {
     if (this.groupData.links.some((groupData) => groupData.source.id === link.source && groupData.target.id === link.target)
       || this.groupData.links.some((groupData) => groupData.target.id === link.source && groupData.source.id === link.target)
     ) return `link(source: ${link.source}, target: ${link.target}) duplicated`;
+    if (link.source === link.target)
+      return `link(source: ${link.source}, target: ${link.target}) source can't equal to target`;
 
     const source = nodes.find((node) => node.id === link.source);
     const target = nodes.find((node) => node.id === link.target);
     if (!source || !target) return `can not find link's source or target (source: ${link.source}, target: ${link.target})`;
 
-    const line = svg.select(`.${Topo.LinkG}`)
+    const line = svg.select(`.${Topo.LinkGClassName}`)
       .append('line')
       .attr('class', Topo.GetLinkClassName(link))
       .attr('x1', source.x)
@@ -105,7 +109,7 @@ export default class Topo {
     if (this.groupData.nodes.some((groupData) => groupData.id === node.id)) return `node(id: ${node.id}) duplicated`;
 
     const { x, y, radius, color, opacity, onClick, onContextmenu } = node;
-    const circle = svg.select(`.${Topo.NodeG}`)
+    const circle = svg.select(`.${Topo.NodeGClassName}`)
       .append('circle')
       .attr('class', Topo.GetNodeClassName(node))
       .attr('cx', x)
@@ -134,8 +138,7 @@ export default class Topo {
 
     const dragended = (event: d3.D3DragEvent<SVGCircleElement, TopoNode, d3.SubjectPosition>) => {
       if (!event.active) simulation.alphaTarget(0);
-      node.fx = null;
-      node.fy = null;
+      this.run && (node.fx = null, node.fy = null);
     };
 
     return d3.drag()
@@ -159,32 +162,78 @@ export default class Topo {
 
     this.simulation
       .nodes(this.groupData.nodes)
-      .force('link', d3.forceLink<TopoGroupNode, TopoGroupLink>(this.groupData.links));
+      .force('link', d3.forceLink(this.groupData.links));
 
     return errorMsg;
   }
 
-  public addData(data: { nodes: TopoNode[], links: TopoLink[] }): Promise<string[]> {
-    return new Promise((resolve) => resolve(this.render(data.nodes, data.links)));
+  public addData(data: { nodes: TopoNode[], links: TopoLink[] }): Promise<{ data: TopoGroupData, errorMsg: string[] }> {
+    return new Promise((resolve) => resolve({ data: this.groupData, errorMsg: this.render(data.nodes, data.links) }));
   }
 
-  public addNode(node: TopoNode): Promise<void> {
+  public addNode(node: TopoNode): Promise<TopoGroupData> {
     return new Promise((resolve, reject) => {
       const errorMsg = this.renderNode(this.simulation, this.svg, node);
       if (errorMsg) return reject(errorMsg);
 
       this.simulation.nodes(this.groupData.nodes);
-      resolve();
+      resolve(this.groupData);
     });
   }
 
-  public addLink(link: TopoLink): Promise<void> {
+  public addLink(link: TopoLink): Promise<TopoGroupData> {
     return new Promise((resolve, reject) => {
       const errorMsg = this.renderLink(this.svg, this.groupData.nodes, link);
       if (errorMsg) return reject(errorMsg);
 
-      this.simulation.force('link', d3.forceLink<TopoGroupNode, TopoGroupLink>(this.groupData.links));
-      resolve();
+      this.simulation.force('link', d3.forceLink(this.groupData.links));
+      resolve(this.groupData);
     });
+  }
+
+  public removeNodes(ids: (number | string)[]): Promise<TopoGroupData> {
+    return new Promise((resolve) => {
+      ids.forEach((id) => {
+        const index = this.groupData.nodes.findIndex((node) => node.id === id);
+        if (index < 0) return;
+
+        this.groupData.nodes[index].el.remove();
+        this.groupData.nodes.splice(index, 1);
+        for (let i = (this.groupData.links.length - 1); i >= 0; i--) {
+          if (this.groupData.links[i].source.id === id || this.groupData.links[i].target.id === id) {
+            this.groupData.links[i].el.remove();
+            this.groupData.links.splice(i, 1);
+          }
+        }
+      });
+
+      this.simulation.nodes(this.groupData.nodes);
+      this.simulation.force('link', d3.forceLink(this.groupData.links));
+      resolve(this.groupData);
+    });
+  }
+
+  public removeLinks(ids: { source: number | string, target: number | string }[]): Promise<TopoGroupData> {
+    return new Promise((resolve) => {
+      ids.forEach((id) => {
+        const index = this.groupData.links.findIndex((link) => link.source.id === id.source && link.target.id === id.target);
+        if (index < 0) return;
+
+        this.groupData.links[index].el.remove();
+        this.groupData.links.splice(index, 1);
+      });
+      this.simulation.force('link', d3.forceLink(this.groupData.links));
+      resolve(this.groupData);
+    });
+  }
+
+  public startSimulation() {
+    this.run = true;
+    this.groupData.nodes.forEach((node) => { node.fx = null; node.fy = null; });
+  }
+
+  public stopSimulation() {
+    this.run = false;
+    this.groupData.nodes.forEach((node) => { node.fx = node.x; node.fy = node.y; });
   }
 }
