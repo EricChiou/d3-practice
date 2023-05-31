@@ -305,7 +305,16 @@ const App: FC = () => {
       style={{ display: menu.show ? 'block' : 'none', left: menu.x, top: menu.y }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      ID: {menu.node?.id}
+      ID: {menu.node?.id}<br />
+      <button
+        className="px-1 hover:bg-gray-400 active:bg-gray-500"
+        onClick={() => {
+          menu.node && topo.current?.startAddLink(menu.node.id);
+          setMenu(() => ({ show: false, x: 0, y: 0, node: null }));
+        }}
+      >
+        Add Link
+      </button>
     </div>
   </>);
 };

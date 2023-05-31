@@ -1,6 +1,12 @@
+/* eslint-disable max-lines */
 import * as d3 from 'd3';
 
-import { TopoConfig, TopoNode, TopoLink, TopoGroupData, TopoGroupLink, TopoGroupNode } from './types';
+import { TopoConfig, LinkConfig, TopoNode, TopoLink, TopoGroupData, TopoGroupLink, TopoGroupNode } from './types';
+
+enum Mode {
+  Normal = 'normal',
+  AddLink = 'addLink',
+}
 
 export default class Topo {
   public static readonly NodePreClassName = 'node';
@@ -26,8 +32,10 @@ export default class Topo {
 
   private simulation: d3.Simulation<TopoGroupNode, TopoGroupLink>;
   private svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>;
-  private groupData: TopoGroupData;
+  private groupData: TopoGroupData = { nodes: [], links: [] };
   private run = true;
+  private newLink: { el?: TopoGroupLink['el'], source?: TopoNode['id'], config?: LinkConfig } = {};
+  private mode: Mode = Mode.Normal;
 
   private renderSVG(config: TopoConfig): d3.Selection<SVGSVGElement, unknown, HTMLElement, any> {
     const { root, width, height, onClick, onContextmenu } = config;
@@ -35,11 +43,31 @@ export default class Topo {
       .attr('display', 'block')
       .attr('width', width)
       .attr('height', height)
-      .on('click', (e: PointerEvent) => onClick?.(e, this.groupData))
-      .on('contextmenu', (e: PointerEvent) => onContextmenu?.(e, this.groupData));
+      .on('click', (e: PointerEvent) => this.svgOnClick(e, onClick))
+      .on('contextmenu', (e: PointerEvent) => this.svgOnContextmenu(e, onContextmenu))
+      .on('mousemove', (e: MouseEvent) => this.svgOnMousemove(e));
     svg.append('g').attr('class', Topo.LinkGClassName);
     svg.append('g').attr('class', Topo.NodeGClassName);
     return svg;
+  }
+
+  private svgOnClick(e: PointerEvent, onClick?: TopoConfig['onClick']) {
+    if (this.mode === Mode.AddLink) this.endAddLink();
+
+    onClick?.(e, this.groupData);
+  }
+
+  private svgOnContextmenu(e: PointerEvent, onContextmenu?: TopoConfig['onContextmenu']) {
+    if (this.mode === Mode.AddLink) this.endAddLink();
+
+    onContextmenu?.(e, this.groupData);
+  }
+
+  private svgOnMousemove(e: MouseEvent) {
+    if (this.mode === Mode.AddLink && this.newLink.el) {
+      this.newLink.el.attr('x2', e.offsetX);
+      this.newLink.el.attr('y2', e.offsetY);
+    }
   }
 
   private createSimulation(config: TopoConfig): d3.Simulation<TopoGroupNode, TopoGroupLink> {
@@ -52,7 +80,7 @@ export default class Topo {
       .on('tick', () => this.ticked(config, this.groupData));
   }
 
-  private ticked(config: TopoConfig, groupData: typeof this.groupData) {
+  private ticked(config: TopoConfig, groupData: Topo['groupData']) {
     groupData.nodes.forEach((node) => {
       let x = node.x;
       if (node.x < 0) { x = 0; }
@@ -72,16 +100,11 @@ export default class Topo {
   }
 
   constructor(config: TopoConfig) {
-    this.groupData = { nodes: [], links: [] };
     this.svg = this.renderSVG(config);
     this.simulation = this.createSimulation(config);
   }
 
-  private renderLink(
-    svg: typeof this.svg,
-    nodes: TopoGroupNode[],
-    link: TopoLink,
-  ): string | undefined {
+  private renderLink(svg: Topo['svg'], nodes: TopoGroupNode[], link: TopoLink): string | undefined {
     if (this.groupData.links.some((groupData) => groupData.source.id === link.source && groupData.target.id === link.target)
       || this.groupData.links.some((groupData) => groupData.target.id === link.source && groupData.source.id === link.target)
     ) return `link(source: ${link.source}, target: ${link.target}) duplicated`;
@@ -105,7 +128,7 @@ export default class Topo {
     this.groupData.links.push({ el: line, ...link, source, target });
   }
 
-  private renderNode(simulation: typeof this.simulation, svg: typeof this.svg, node: TopoNode): string | undefined {
+  private renderNode(simulation: Topo['simulation'], svg: Topo['svg'], node: TopoNode): string | undefined {
     if (this.groupData.nodes.some((groupData) => groupData.id === node.id)) return `node(id: ${node.id}) duplicated`;
 
     const { x, y, radius, color, opacity, onClick, onContextmenu } = node;
@@ -117,14 +140,24 @@ export default class Topo {
       .attr('r', radius || Topo.DefaultNodeRadius)
       .attr('fill', color || Topo.DefaultNodeColor)
       .attr('opacity', opacity || Topo.DefaultNodeOpacity)
-      .on('click', (e: PointerEvent) => onClick?.(e, groupNode, this.groupData))
-      .on('contextmenu', (e: PointerEvent) => onContextmenu?.(e, groupNode, this.groupData));
+      .on('click', (e: PointerEvent) => this.nodeOnClick(e, groupNode, onClick))
+      .on('contextmenu', (e: PointerEvent) => this.nodeOnContextmenu(e, groupNode, onContextmenu));
     const groupNode = { el: circle, ...node };
     circle.call(this.drag(simulation, groupNode) as any);
     this.groupData.nodes.push(groupNode);
   }
 
-  private drag(simulation: typeof this.simulation, node: TopoGroupNode): d3.DragBehavior<Element, unknown, unknown> {
+  private nodeOnClick(e: PointerEvent, groupNode: TopoGroupNode, onClick?: TopoNode['onClick']) {
+    if (this.mode === Mode.AddLink) this.endAddLink(groupNode.id);
+
+    onClick?.(e, groupNode, this.groupData);
+  }
+
+  private nodeOnContextmenu(e: PointerEvent, groupNode: TopoGroupNode, onContextmenu?: TopoNode['onContextmenu']) {
+    onContextmenu?.(e, groupNode, this.groupData);
+  }
+
+  private drag(simulation: Topo['simulation'], node: TopoGroupNode): d3.DragBehavior<Element, unknown, unknown> {
     const dragstarted = (event: d3.D3DragEvent<SVGCircleElement, TopoNode, d3.SubjectPosition>) => {
       if (!event.active) simulation.alphaTarget(0.1).restart();
       node.fx = node.x;
@@ -235,5 +268,51 @@ export default class Topo {
   public stopSimulation() {
     this.run = false;
     this.groupData.nodes.forEach((node) => { node.fx = node.x; node.fy = node.y; });
+  }
+
+  public getSVG(): d3.Selection<SVGSVGElement, unknown, HTMLElement, any> {
+    return this.svg;
+  }
+
+  public getSimulation(): d3.Simulation<TopoGroupNode, TopoGroupLink> {
+    return this.simulation;
+  }
+
+  public getMode(): Mode {
+    return this.mode;
+  }
+
+  private endAddLink(id?: TopoNode['id']) {
+    if (this.newLink.source && id) {
+      const link = {
+        source: this.newLink.source,
+        target: id,
+        ...this.newLink.config,
+      };
+      this.addLink(link);
+    }
+
+    this.newLink.el?.remove();
+    this.newLink = {};
+    this.mode = Mode.Normal;
+  }
+
+  public startAddLink(id: TopoNode['id'], config?: LinkConfig) {
+    const node = this.groupData.nodes.find((node) => node.id === id);
+    if (!node) return;
+
+    this.newLink = {
+      el: this.svg.select(`.${Topo.LinkGClassName}`).append('line')
+        .attr('x1', node.x)
+        .attr('y1', node.y)
+        .attr('x2', node.x)
+        .attr('y2', node.y)
+        .attr('stroke-width', 2)
+        .attr('stroke', 'red')
+        .attr('stroke-dasharray', '7, 5'),
+      source: id,
+      config: config,
+    };
+    this.mode = Mode.AddLink;
   }
 }

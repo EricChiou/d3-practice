@@ -19,25 +19,25 @@ export interface TopoNode extends SimulationNodeDatum {
   onClick?: (event: PointerEvent, groupNode: TopoGroupNode, groupData: TopoGroupData) => void;
 }
 
-export interface TopoLink extends SimulationLinkDatum<TopoNode> {
-  source: TopoNode['id'];
-  target: TopoNode['id'];
+export interface LinkConfig {
   width?: number;
   color?: string;
   opacity?: number;
+}
+
+export interface TopoLink extends LinkConfig, SimulationLinkDatum<TopoNode> {
+  source: TopoNode['id'];
+  target: TopoNode['id'];
 }
 
 export interface TopoGroupNode extends TopoNode {
   el: Selection<SVGCircleElement, unknown, HTMLElement, unknown>;
 }
 
-export interface TopoGroupLink extends SimulationLinkDatum<TopoGroupNode> {
+export interface TopoGroupLink extends LinkConfig, SimulationLinkDatum<TopoGroupNode> {
   el: Selection<SVGLineElement, unknown, HTMLElement, unknown>;
   source: TopoGroupNode;
   target: TopoGroupNode;
-  width?: number;
-  color?: string;
-  opacity?: number;
 }
 
 export interface TopoGroupData {
