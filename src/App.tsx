@@ -30,7 +30,7 @@ const App: FC = () => {
       y: 250,
       radius: 5,
       color: 'red',
-      onContextmenu,
+      onContextmenu: nodeOnContextmenu,
     },
     {
       id: 'green',
@@ -38,7 +38,7 @@ const App: FC = () => {
       y: 300,
       radius: 10,
       color: 'green',
-      onContextmenu,
+      onContextmenu: nodeOnContextmenu,
     },
     {
       id: 'blue',
@@ -46,7 +46,7 @@ const App: FC = () => {
       y: 170,
       radius: 15,
       color: 'blue',
-      onContextmenu,
+      onContextmenu: nodeOnContextmenu,
     },
   ];
   const links: TopoLink[] = [
@@ -74,13 +74,13 @@ const App: FC = () => {
     return () => { interval.current && clearInterval(interval.current); };
   }, []);
 
-  function onContextmenu(event: PointerEvent, groupNode: TopoGroupNode) {
+  function nodeOnContextmenu(event: PointerEvent, groupNode: TopoGroupNode) {
     setMenu(() => ({ show: true, x: event.clientX, y: event.clientY, node: groupNode }));
   }
 
   function addNode() {
     if (!newNode.id) return;
-    topo.current?.addNode({ ...newNode, onContextmenu }).then((data) => setTopoData(() => ({ ...data })));
+    topo.current?.addNode({ ...newNode, onContextmenu: nodeOnContextmenu }).then((data) => setTopoData(() => ({ ...data })));
   }
 
   function addLink() {
@@ -305,7 +305,8 @@ const App: FC = () => {
       style={{ display: menu.show ? 'block' : 'none', left: menu.x, top: menu.y }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      ID: {menu.node?.id}<br />
+      ID: {menu.node?.id}
+      <br />
       <button
         className="px-1 hover:bg-gray-400 active:bg-gray-500"
         onClick={() => {
@@ -314,6 +315,16 @@ const App: FC = () => {
         }}
       >
         Add Link
+      </button>
+      <br />
+      <button
+        className="px-1 hover:bg-gray-400 active:bg-gray-500"
+        onClick={() => {
+          menu.node && removeNode(menu.node.id);
+          setMenu(() => ({ show: false, x: 0, y: 0, node: null }));
+        }}
+      >
+        Remove
       </button>
     </div>
   </>);
