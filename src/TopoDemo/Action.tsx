@@ -1,4 +1,3 @@
-import { FC } from 'react';
 import { TopoConfig, TopoGroupData, TopoLink, TopoNode } from '../topo';
 
 interface Props {
@@ -13,7 +12,7 @@ interface Props {
   addLink(link: TopoLink): void;
 }
 
-const Action: FC<Props> = ({
+const Action = ({
   buttonClass,
   config,
   topoData,
@@ -23,7 +22,7 @@ const Action: FC<Props> = ({
   setNewLink,
   addNode,
   addLink,
-}) => {
+}: Props) => {
   const inputClass = 'px-1 w-48 text-right border border-black outline-none';
 
   function renderSelectedNode(id: number | string) {

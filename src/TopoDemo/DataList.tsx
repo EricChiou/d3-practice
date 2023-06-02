@@ -1,4 +1,4 @@
-import { FC, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import Topo, { TopoGroupData, TopoGroupLink, TopoGroupNode, TopoLink, TopoNode } from '../topo';
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
   removeLink(source: TopoNode['id'], target: TopoNode['id']): void;
 }
 
-const DataList: FC<Props> = ({ buttonClass, topoData, newLink, removeNode, removeLink }) => {
+const DataList = ({ buttonClass, topoData, newLink, removeNode, removeLink }: Props) => {
   const dataClassName = 'flex py-1 border-b border-gray-400 hover:bg-gray-200';
 
   const interval = useRef<number | null>(null);

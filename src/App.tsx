@@ -1,8 +1,6 @@
-import { FC } from 'react';
-
 import TopoDemo from './TopoDemo';
 
-const App: FC = () => {
+const App = () => {
   return (<>
     <TopoDemo></TopoDemo>
   </>);

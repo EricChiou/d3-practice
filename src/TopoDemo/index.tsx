@@ -1,4 +1,4 @@
-import { FC, useRef, useState, useCallback, useMemo, useEffect } from 'react';
+import { useRef, useState, useCallback, useMemo, useEffect, memo } from 'react';
 
 import Topo, { TopoConfig, TopoNode, TopoLink, TopoGroupData, TopoGroupNode } from '../topo';
 
@@ -12,7 +12,7 @@ interface Menu {
   node: TopoNode | null;
 }
 
-const TopoDemo: FC = () => {
+const TopoDemo = memo(() => {
   const buttonClass = 'px-2 py-0.5 text-white bg-sky-500 active:bg-sky-600';
 
   const topo = useRef<Topo | null>(null);
@@ -160,6 +160,6 @@ const TopoDemo: FC = () => {
       </button>
     </div>
   </>);
-};
+});
 
 export default TopoDemo;
