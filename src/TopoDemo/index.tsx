@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useMemo, useEffect, memo } from 'react';
+import { useRef, useState, useEffect, memo } from 'react';
 
 import Topo, { TopoConfig, TopoNode, TopoLink, TopoGroupData, TopoGroupNode } from '../topo';
 
@@ -21,18 +21,18 @@ const TopoDemo = memo(() => {
   const [newLink, setNewLink] = useState<TopoLink>({ source: '', target: '', width: 1, color: 'link color' });
   const [menu, setMenu] = useState<Menu>({ show: false, x: 0, y: 0, node: null });
 
-  const nodeOnContextmenu = useCallback((event: PointerEvent, groupNode: TopoGroupNode) => {
+  const nodeOnContextmenu = (event: PointerEvent, groupNode: TopoGroupNode) => {
     setMenu(() => ({ show: true, x: event.clientX, y: event.clientY, node: groupNode }));
-  }, []);
+  };
 
-  const config: TopoConfig = useMemo(() => ({
+  const config: TopoConfig = {
     root: '#topo',
     width: 600,
     height: 600,
     onClick: () => setMenu(() => ({ show: false, x: 0, y: 0, node: null })),
     onContextmenu: (event) => event.preventDefault(),
-  }), []);
-  const data = useMemo(() => ({
+  };
+  const data = {
     nodes: [
       {
         id: 'red',
@@ -73,7 +73,7 @@ const TopoDemo = memo(() => {
         color: 'red',
       },
     ],
-  }), []);
+  };
 
   useEffect(() => {
     if (topo.current) return;
@@ -82,23 +82,23 @@ const TopoDemo = memo(() => {
     topo.current.addData(data).then((result) => setTopoData(() => ({ ...result.data })));
   }, []);
 
-  function addNode(node: TopoNode) {
+  const addNode = (node: TopoNode) => {
     if (!node.id) return;
     topo.current?.addNode({ ...node, onContextmenu: nodeOnContextmenu }).then((data) => setTopoData(() => ({ ...data })));
-  }
+  };
 
-  function addLink(link: TopoLink) {
+  const addLink = (link: TopoLink) => {
     if (!link.source || !link.target) return;
     topo.current?.addLink(link).then((data) => setTopoData(() => ({ ...data })));
-  }
+  };
 
-  function removeNode(id: number | string) {
+  const removeNode = (id: number | string) => {
     topo.current?.removeNodes([id]).then((data) => setTopoData(() => ({ ...data })));
-  }
+  };
 
-  function removeLink(source: number | string, target: number | string) {
+  const removeLink = (source: number | string, target: number | string) => {
     topo.current?.removeLinks([{ source, target }]).then((data) => setTopoData(() => ({ ...data })));
-  }
+  };
 
   return (<>
     <div className="flex px-2">
